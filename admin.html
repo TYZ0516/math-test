@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>老師後台・數學地下城前測</title>
+<script src="config.js"></script>
+<script>
+window.USE_DEMO = !firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('請貼上') >= 0;
+if (USE_DEMO) document.write('<script src="mock.js"><\/script>');
+else ['app', 'auth', 'database'].forEach(n => document.write('<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-' + n + '-compat.js"><\/script>'));
+</script>
+<script src="questions.js"></script>
+<style>
+  :root{--bg:#f4f5f8;--card:#fff;--line:#d8dbe3;--txt:#1d2433;--dim:#5f6779;--ok:#1f9d55;--okbg:#d9f5e3;--bad:#d64045;--badbg:#fde0e1;--acc:#2f6fdb;--warn:#e06c00}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:16px}
+  header{position:sticky;top:0;z-index:4;background:#1d2433;color:#fff;display:flex;align-items:center;gap:14px;padding:10px 18px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0 8px 0 0}
+  .pill{padding:4px 12px;border-radius:99px;font-weight:700;font-size:14px}
+  .st-waiting{background:#5f6779}.st-running{background:var(--ok)}.st-ended{background:var(--bad)}
+  #clock{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;min-width:90px}
+  #clock.warn{color:#ff8a8a}
+  header .sp{flex:1}
+  button{font-family:inherit;font-size:15px;padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--txt);cursor:pointer}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+  button.go{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:700}
+  button.stop{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:700}
+  button:disabled{opacity:.4;cursor:default}
+  header button{border-color:#3b4459}
+  nav{display:flex;gap:4px;padding:10px 18px 0}
+  nav button{border-radius:8px 8px 0 0;border-bottom:none;padding:10px 18px;font-size:16px}
+  nav button.on{background:var(--card);font-weight:800;color:var(--acc)}
+  main{padding:0 18px 40px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:0 10px 10px 10px;padding:16px}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .stat{background:var(--bg);border-radius:8px;padding:8px 16px}
+  .stat b{font-size:24px;display:block}
+  .stat span{color:var(--dim);font-size:13px}
+  table{border-collapse:collapse;width:100%}
+  th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:center;white-space:nowrap}
+  th{font-size:13px;color:var(--dim);font-weight:600;position:sticky;top:0;background:#fff}
+  td.l,th.l{text-align:left;padding-left:8px}
+  .cell{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:5px;font-weight:800;font-size:14px;background:#eceef3;color:#a2a8b6}
+  .cell.ok{background:var(--okbg);color:var(--ok)}
+  .cell.bad{background:var(--badbg);color:var(--bad)}
+  .cell.now{outline:3px solid var(--acc);outline-offset:-3px;color:var(--acc)}
+  .tag{font-size:12px;padding:2px 6px;border-radius:4px;margin-left:4px}
+  .tag.idle{background:#ffe9d6;color:var(--warn)}
+  .tag.fin{background:var(--okbg);color:var(--ok)}
+  .tag.dup{background:var(--badbg);color:var(--bad)}
+  .scroll{overflow-x:auto}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-bottom:18px}
+  .tp{background:var(--bg);border-radius:8px;padding:10px 12px}
+  .tp .nm{font-weight:700}
+  .meter{height:12px;background:#e3e6ee;border-radius:6px;overflow:hidden;margin-top:6px}
+  .meter>div{height:100%;background:var(--ok)}
+  .meter.low>div{background:var(--bad)}.meter.mid>div{background:var(--warn)}
+  .qa{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer}
+  .qa:hover{border-color:var(--acc)}
+  .qa .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .qa .rate{font-size:22px;font-weight:800;min-width:64px}
+  .qa .stem{font-size:18px;margin:6px 0}
+  .dist{display:grid;grid-template-columns:1fr;gap:4px;font-size:15px}
+  .dl{display:grid;grid-template-columns:minmax(120px,240px) 1fr 50px;gap:8px;align-items:center}
+  .dl .b{height:14px;background:#e3e6ee;border-radius:4px;overflow:hidden}
+  .dl .b>div{height:100%;background:#9aa3b5}
+  .dl.c .b>div{background:var(--ok)}
+  .dl .why{grid-column:1/-1;color:var(--dim);font-size:13px;margin:-2px 0 4px}
+  /* 檢討模式 */
+  #rv{font-size:30px}
+  #rv .rq{font-size:40px;line-height:1.7;margin:10px 0 24px;font-weight:700}
+  #rv .ro{display:grid;grid-template-columns:70px 1fr 340px;gap:16px;align-items:center;padding:12px 16px;border:3px solid var(--line);border-radius:12px;margin-bottom:12px}
+  #rv .ro .k{font-weight:900;color:var(--dim)}
+  #rv .ro.c.show{border-color:var(--ok);background:var(--okbg)}
+  #rv .ro .b{height:30px;background:#e3e6ee;border-radius:6px;overflow:hidden;position:relative}
+  #rv .ro .b>div{height:100%;background:#7d879c}
+  #rv .ro.c.show .b>div{background:var(--ok)}
+  #rv .ro .n{position:absolute;right:8px;top:0;font-size:20px;line-height:30px;font-weight:800}
+  #rv .ro .why{grid-column:2/-1;font-size:20px;color:var(--bad);margin-top:-6px}
+  #rv .rnav{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:16px;margin-bottom:6px}
+  #rv .rnav button{font-size:18px;padding:10px 18px}
+  #rv .rmeta{font-size:20px;color:var(--dim)}
+  .login{max-width:420px;margin:12vh auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px;text-align:center}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9}
+  .modal>div{background:#fff;border-radius:12px;padding:24px;max-width:420px}
+  .hidden{display:none!important}
+  .demo{background:#d64045;color:#fff;text-align:center;font-size:13px;padding:3px}
+  .hint{color:var(--dim);font-size:14px}
+</style>
+</head>
+<body>
+<div id="demoBar" class="demo hidden">示範模式（尚未連接 Firebase）：用同一台電腦另開分頁打開 index.html 就能模擬學生</div>
+
+<div id="loginBox" class="login">
+  <h2 style="margin-top:0">老師後台</h2>
+  <p class="hint">請用設定好的 Google 帳號登入</p>
+  <button class="pri" id="loginBtn" style="font-size:17px;padding:12px 24px">用 Google 登入</button>
+  <p id="loginErr" style="color:var(--bad)"></p>
+</div>
+
+<div id="main" class="hidden">
+  <header>
+    <h1>數學地下城・前測後台</h1>
+    <span id="stPill" class="pill st-waiting">等待開始</span>
+    <span id="clock">--:--</span>
+    <span class="sp"></span>
+    <button class="go" id="startBtn">▶ 開始測驗</button>
+    <button id="extBtn">＋5 分鐘</button>
+    <button class="stop" id="endBtn">■ 結束收卷</button>
+    <button id="csvBtn">匯出 CSV</button>
+    <button id="resetBtn">清空重來</button>
+    <button id="outBtn">登出</button>
+  </header>
+  <nav>
+    <button data-t="live" class="on">即時進度</button>
+    <button data-t="ana">題目分析</button>
+    <button data-t="rev">檢討模式</button>
+  </nav>
+  <main>
+    <div class="panel" id="t-live">
+      <div class="stats" id="stats"></div>
+      <div class="scroll"><table id="grid"></table></div>
+      <p class="hint">綠 ✓＝答對；紅色字母＝學生選的錯誤選項（對照「題目分析」裡的 B／C／D，學生手機上的選項順序是打亂的）；藍框＝正在作答的題目；超過 3 分鐘沒有動作會標橘色。</p>
+    </div>
+    <div class="panel hidden" id="t-ana">
+      <h3 style="margin-top:0">各項目答對率</h3>
+      <div class="grid2" id="topics"></div>
+      <h3>每題答對率（由低到高，點一下進入檢討）</h3>
+      <div id="qlist"></div>
+    </div>
+    <div class="panel hidden" id="t-rev">
+      <div id="rv"></div>
+    </div>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden"><div>
+  <h3 id="mTitle" style="margin-top:0"></h3><p id="mText"></p>
+  <div style="display:flex;gap:10px;justify-content:flex-end"><button id="mNo">取消</button><button class="stop" id="mYes">確定</button></div>
+</div></div>
+
+<script>
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.database();
+const base = db.ref('tests/' + TEST_ID);
+const TS = firebase.database.ServerValue.TIMESTAMP;
+const $ = id => document.getElementById(id);
+if (window.DEMO_MODE) $('demoBar').classList.remove('hidden');
+
+let control = { status: 'waiting' }, students = {}, offset = 0, tab = 'live', rvOrder = 'rate', rvIdx = 0, rvShow = false, listening = false;
+const now = () => Date.now() + offset;
+const LET = 'ABCD';
+
+db.ref('.info/serverTimeOffset').on('value', s => offset = s.val() || 0);
+
+$('loginBtn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => $('loginErr').textContent = '登入失敗：' + e.code);
+$('outBtn').onclick = () => auth.signOut();
+
+auth.onAuthStateChanged(u => {
+  const okUser = u && u.email && u.email.toLowerCase() === TEACHER_EMAIL.toLowerCase();
+  $('loginBox').classList.toggle('hidden', !!okUser);
+  $('main').classList.toggle('hidden', !okUser);
+  if (u && !okUser) { $('loginErr').textContent = (u.email || '匿名帳號') + ' 不是設定的老師帳號'; auth.signOut(); }
+  if (okUser && !listening) {
+    listening = true;
+    base.child('control').on('value', s => { control = s.val() || { status: 'waiting' }; renderAll(); });
+    base.child('students').on('value', s => { students = s.val() || {}; renderAll(); });
+  }
+});
+
+// ---------- 控制 ----------
+function ask(title, text, fn) {
+  $('mTitle').textContent = title; $('mText').innerHTML = text; $('modal').classList.remove('hidden');
+  $('mYes').onclick = () => { $('modal').classList.add('hidden'); fn(); };
+  $('mNo').onclick = () => $('modal').classList.add('hidden');
+}
+$('startBtn').onclick = () => ask('開始測驗？', `學生畫面會立刻開始倒數 ${DURATION_MIN} 分鐘。`, () => base.child('control').set({ status: 'running', startAt: TS, durationMin: DURATION_MIN }));
+$('extBtn').onclick = () => base.child('control/durationMin').set((control.durationMin || DURATION_MIN) + 5);
+$('endBtn').onclick = () => ask('結束收卷？', '所有學生會立刻停止作答。', () => base.child('control/status').set('ended'));
+$('resetBtn').onclick = () => ask('清空重來？', '<b style="color:var(--bad)">會刪除這次所有學生的作答紀錄</b>，建議先匯出 CSV。', async () => {
+  await base.child('students').remove(); await base.child('control').set({ status: 'waiting' });
+});
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  tab = b.dataset.t;
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  ['live', 'ana', 'rev'].forEach(t => $('t-' + t).classList.toggle('hidden', t !== tab));
+  renderAll();
+});
+
+// ---------- 資料整理 ----------
+function list() {
+  const arr = Object.entries(students).filter(([, v]) => v.profile).map(([id, v]) => ({ id, ...v, answers: v.answers || {}, progress: v.progress || {} }));
+  arr.sort((a, b) => a.profile.seat - b.profile.seat || (a.profile.at || 0) - (b.profile.at || 0));
+  const seen = {}; arr.forEach(s => { seen[s.profile.seat] = (seen[s.profile.seat] || 0) + 1; });
+  arr.forEach(s => s.dup = seen[s.profile.seat] > 1);
+  return arr;
+}
+function qStats(arr) {
+  return QUESTIONS.map((q, i) => {
+    const cnt = [0, 0, 0, 0]; let n = 0;
+    arr.forEach(s => { const a = s.answers[q.id]; if (a) { cnt[a.c]++; n++; } });
+    return { q, i, cnt, n, rate: n ? cnt[0] / n : null };
+  });
+}
+const pct = r => r == null ? '—' : Math.round(r * 100) + '%';
+const lvl = r => r == null ? '' : r < .4 ? 'low' : r < .7 ? 'mid' : '';
+
+function renderAll() { renderHeader(); if (tab === 'live') renderLive(); if (tab === 'ana') renderAna(); if (tab === 'rev') renderRev(); }
+
+function renderHeader() {
+  const st = control.status || 'waiting';
+  $('stPill').className = 'pill st-' + st;
+  $('stPill').textContent = { waiting: '等待開始', running: '作答中', ended: '已收卷' }[st];
+  $('startBtn').disabled = st === 'running';
+  $('startBtn').textContent = st === 'ended' ? '▶ 重新開始計時' : '▶ 開始測驗';
+  $('extBtn').disabled = st !== 'running';
+  $('endBtn').disabled = st !== 'running';
+}
+
+function renderLive() {
+  const arr = list(), t = now();
+  const fin = arr.filter(s => s.progress.finished || Object.keys(s.answers).length === 15).length;
+  const totalAns = arr.reduce((a, s) => a + Object.keys(s.answers).length, 0);
+  const totalOk = arr.reduce((a, s) => a + Object.values(s.answers).filter(x => x.c === 0).length, 0);
+  $('stats').innerHTML = `
+    <div class="stat"><b>${arr.length}</b><span>已進場</span></div>
+    <div class="stat"><b>${fin}</b><span>已完成</span></div>
+    <div class="stat"><b>${arr.length ? (totalAns / arr.length).toFixed(1) : 0}</b><span>平均已答題數</span></div>
+    <div class="stat"><b>${totalAns ? pct(totalOk / totalAns) : '—'}</b><span>目前整體答對率</span></div>`;
+  let h = '<tr><th>座號</th><th class="l">姓名</th><th>進度</th><th>答對</th>' + QUESTIONS.map((q, i) => `<th title="${q.topic}">${i + 1}</th>`).join('') + '</tr>';
+  h += arr.map(s => {
+    const n = Object.keys(s.answers).length, ok = Object.values(s.answers).filter(x => x.c === 0).length;
+    const isFin = s.progress.finished || n === 15;
+    const idle = control.status === 'running' && !isFin && s.progress.at && t - s.progress.at > 180000;
+    const tags = (s.dup ? '<span class="tag dup">座號重複</span>' : '') + (isFin ? '<span class="tag fin">完成</span>' : '') + (idle ? `<span class="tag idle">${Math.floor((t - s.progress.at) / 60000)} 分鐘沒動作</span>` : '');
+    const cells = QUESTIONS.map(q => {
+      const a = s.answers[q.id];
+      if (a) return `<td><span class="cell ${a.c === 0 ? 'ok' : 'bad'}">${a.c === 0 ? '✓' : LET[a.c]}</span></td>`;
+      if (!isFin && s.progress.cur === q.id && control.status === 'running') return '<td><span class="cell now">…</span></td>';
+      return '<td><span class="cell">·</span></td>';
+    }).join('');
+    return `<tr><td><b>${s.profile.seat}</b></td><td class="l">${esc(s.profile.name)}${tags}</td><td>${n}/15</td><td><b>${ok}</b></td>${cells}</tr>`;
+  }).join('');
+  if (!arr.length) h += `<tr><td colspan="${QUESTIONS.length + 4}" class="hint" style="padding:30px">還沒有學生進場</td></tr>`;
+  $('grid').innerHTML = h;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function renderAna() {
+  const arr = list(), qs = qStats(arr);
+  $('topics').innerHTML = TOPICS.map(tp => {
+    let ok = 0, n = 0; qs.filter(x => x.q.topic === tp).forEach(x => { ok += x.cnt[0]; n += x.n; });
+    const r = n ? ok / n : null;
+    return `<div class="tp"><div class="nm">${tp} <span style="float:right">${pct(r)}</span></div><div class="meter ${lvl(r)}"><div style="width:${r == null ? 0 : r * 100}%"></div></div></div>`;
+  }).join('');
+  const sorted = [...qs].sort((a, b) => (a.rate ?? 2) - (b.rate ?? 2));
+  $('qlist').innerHTML = sorted.map(x => `
+    <div class="qa" data-i="${x.i}">
+      <div class="top"><span class="rate" style="color:${x.rate == null ? 'var(--dim)' : x.rate < .4 ? 'var(--bad)' : x.rate < .7 ? 'var(--warn)' : 'var(--ok)'}">${pct(x.rate)}</span>
+        <b>第 ${x.i + 1} 題</b><span class="hint">${x.q.topic}・${ROOMS[x.q.room].name}・作答 ${x.n} 人</span></div>
+      <div class="stem">${x.q.stem}</div>
+      <div class="dist">${x.q.opts.map((o, k) => `<div class="dl ${k === 0 ? 'c' : ''}"><span>${LET[k]}. ${o}${k === 0 ? ' ✓' : ''}</span><span class="b"><div style="width:${x.n ? x.cnt[k] / x.n * 100 : 0}%"></div></span><span>${x.cnt[k]} 人</span>${k && x.cnt[k] ? `<span class="why">↳ ${x.q.why[k]}</span>` : ''}</div>`).join('')}</div>
+    </div>`).join('');
+  $('qlist').querySelectorAll('.qa').forEach(el => el.onclick = () => {
+    rvOrder = 'num'; rvIdx = +el.dataset.i; rvShow = false;
+    document.querySelector('nav button[data-t="rev"]').click();
+  });
+}
+
+function rvList(qs) { return rvOrder === 'rate' ? [...qs].sort((a, b) => (a.rate ?? 2) - (b.rate ?? 2)) : qs; }
+function renderRev() {
+  const qs = qStats(list()), L = rvList(qs);
+  if (rvOrder === 'num') rvIdx = Math.max(0, Math.min(14, rvIdx));
+  const pos = rvOrder === 'num' ? rvIdx : Math.max(0, Math.min(L.length - 1, rvIdx));
+  const x = L[pos];
+  const max = Math.max(1, ...x.cnt);
+  $('rv').innerHTML = `
+    <div class="rnav">
+      <button id="rvPrev">◀ 上一題</button><button id="rvNext">下一題 ▶</button>
+      <button id="rvAns" class="${rvShow ? '' : 'pri'}">${rvShow ? '隱藏答案' : '顯示答案'}</button>
+      <span class="sp" style="flex:1"></span>
+      排序：<button id="rvRate" class="${rvOrder === 'rate' ? 'pri' : ''}">答錯多的先</button><button id="rvNum" class="${rvOrder === 'num' ? 'pri' : ''}">依題號</button>
+    </div>
+    <div class="rmeta">第 ${x.i + 1} 題・${x.q.topic}　｜　作答 ${x.n} 人${rvShow ? '・答對率 ' + pct(x.rate) : ''}</div>
+    <div class="rq">${x.q.stem}</div>
+    ${x.q.opts.map((o, k) => `<div class="ro ${k === 0 ? 'c' : ''} ${rvShow ? 'show' : ''}">
+        <span class="k">${LET[k]}</span><span>${o}</span>
+        <span class="b"><div style="width:${x.cnt[k] / max * 100}%"></div><span class="n">${x.cnt[k]}</span></span>
+        ${rvShow && k && x.cnt[k] ? `<span class="why">常見錯誤：${x.q.why[k]}</span>` : ''}
+      </div>`).join('')}`;
+  $('rvPrev').onclick = () => { rvIdx = Math.max(0, pos - 1); rvShow = false; renderRev(); };
+  $('rvNext').onclick = () => { rvIdx = Math.min(14, pos + 1); rvShow = false; renderRev(); };
+  $('rvAns').onclick = () => { rvShow = !rvShow; renderRev(); };
+  $('rvRate').onclick = () => { rvOrder = 'rate'; rvIdx = 0; rvShow = false; renderRev(); };
+  $('rvNum').onclick = () => { rvOrder = 'num'; rvIdx = 0; rvShow = false; renderRev(); };
+}
+document.addEventListener('keydown', e => {
+  if (tab !== 'rev') return;
+  if (e.key === 'ArrowRight') $('rvNext') && $('rvNext').click();
+  if (e.key === 'ArrowLeft') $('rvPrev') && $('rvPrev').click();
+  if (e.key === ' ') { e.preventDefault(); $('rvAns') && $('rvAns').click(); }
+});
+
+// ---------- 匯出 ----------
+$('csvBtn').onclick = () => {
+  const arr = list();
+  const head = ['座號', '姓名', '已答', '答對', ...QUESTIONS.map((q, i) => `第${i + 1}題(${q.topic})`)];
+  const rows = arr.map(s => [s.profile.seat, s.profile.name, Object.keys(s.answers).length,
+    Object.values(s.answers).filter(x => x.c === 0).length,
+    ...QUESTIONS.map(q => s.answers[q.id] ? (s.answers[q.id].c === 0 ? '✓' : LET[s.answers[q.id].c]) : '')]);
+  const csv = '﻿' + [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = TEST_ID + '_作答紀錄.csv'; a.click();
+};
+
+// 計時器
+setInterval(() => {
+  if (control.status === 'running' && control.startAt) {
+    const left = Math.max(0, control.startAt + (control.durationMin || DURATION_MIN) * 60000 - now());
+    $('clock').textContent = Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
+    $('clock').classList.toggle('warn', left < 180000);
+    if (left === 0 && !control._autoEnded) { control._autoEnded = true; base.child('control/status').set('ended'); }
+  } else $('clock').textContent = control.status === 'ended' ? '收卷' : '--:--';
+  if (tab === 'live') renderLive();
+}, 1000);
+</script>
+</body>
+</html>

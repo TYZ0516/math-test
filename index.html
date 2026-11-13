@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>數學地下城・試煉入口</title>
+<script src="config.js"></script>
+<script>
+window.USE_DEMO = !firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('請貼上') >= 0;
+if (USE_DEMO) document.write('<script src="mock.js"><\/script>');
+else ['app', 'auth', 'database'].forEach(n => document.write('<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-' + n + '-compat.js"><\/script>'));
+</script>
+<script src="questions.js"></script>
+<style>
+  :root{--bg:#1b1430;--panel:#2a2140;--panel2:#372b55;--line:#5b4a85;--txt:#f5f0ff;--dim:#b9add6;--gold:#ffd166;--ok:#5ad17a;--bad:#e8575a;--acc:#7cc4ff}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+  body{display:flex;justify-content:center}
+  #app{width:100%;max-width:520px;min-height:100%;display:flex;flex-direction:column;padding:14px}
+  .px{border:3px solid var(--line);box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--line);background:var(--panel);border-radius:2px}
+  h1{font-size:24px;margin:8px 0 2px;text-align:center;letter-spacing:2px;color:var(--gold);text-shadow:3px 3px 0 #000}
+  .sub{text-align:center;color:var(--dim);font-size:14px;margin-bottom:18px}
+  .card{padding:18px;margin:10px 4px}
+  label{display:block;font-size:15px;color:var(--dim);margin:10px 0 6px}
+  input{width:100%;font-size:20px;padding:12px;background:var(--bg);color:var(--txt);border:3px solid var(--line);border-radius:2px;outline:none}
+  input:focus{border-color:var(--acc)}
+  .btn{display:block;width:100%;margin-top:16px;padding:14px;font-size:19px;font-weight:700;letter-spacing:2px;color:#1b1430;background:var(--gold);border:none;border-bottom:5px solid #b8862b;border-radius:2px;cursor:pointer;font-family:inherit}
+  .btn:active{transform:translateY(3px);border-bottom-width:2px}
+  .btn:disabled{background:#6d6383;border-bottom-color:#4a425c;color:#2a2140}
+  .btn.ghost{background:transparent;color:var(--dim);border:2px dashed var(--line);font-size:15px;padding:10px;font-weight:400}
+  .err{color:var(--bad);font-size:14px;min-height:20px;margin-top:8px;text-align:center}
+  .center{text-align:center}
+  .demo{position:fixed;top:0;left:0;right:0;background:#e8575a;color:#fff;text-align:center;font-size:12px;padding:2px;z-index:9}
+  /* HUD */
+  .hud{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:15px;padding:8px 10px;margin:4px 4px 10px}
+  .hud b{color:var(--gold)}
+  #timer{font-variant-numeric:tabular-nums;font-weight:700}
+  #timer.warn{color:var(--bad);animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:.4}}
+  .bar{height:10px;background:var(--bg);border:2px solid var(--line);margin:0 4px 10px}
+  .bar>div{height:100%;background:var(--acc);transition:width .4s}
+  /* stage */
+  .stage{position:relative;padding:10px;margin:0 4px 12px;text-align:center;background:linear-gradient(#241b3d,#2f2450)}
+  .roomname{font-size:14px;color:var(--dim);letter-spacing:3px}
+  .mon{height:130px;display:flex;align-items:flex-end;justify-content:center;margin:6px 0}
+  .mon svg{image-rendering:pixelated;animation:bob 1.2s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-6px)}}
+  .mon.hit svg{animation:hit .5s}
+  @keyframes hit{0%,100%{transform:translateX(0);filter:none}20%{transform:translateX(-10px);filter:brightness(3)}40%{transform:translateX(10px)}60%{transform:translateX(-6px);filter:brightness(3)}}
+  .mon.miss svg{animation:dodge .5s}
+  @keyframes dodge{50%{transform:translateX(40px)}}
+  .hp{display:flex;justify-content:center;gap:6px;margin-top:4px}
+  .hp i{width:22px;height:10px;background:var(--bad);border:2px solid #000}
+  .hp i.gone{background:#3a3150}
+  .pop{position:absolute;left:0;right:0;top:40%;font-size:28px;font-weight:900;text-shadow:3px 3px 0 #000;pointer-events:none;opacity:0}
+  .pop.show{animation:pop .9s}
+  @keyframes pop{0%{opacity:0;transform:scale(.6)}20%{opacity:1;transform:scale(1.15)}80%{opacity:1}100%{opacity:0;transform:translateY(-30px)}}
+  .dots{display:flex;justify-content:center;gap:8px;margin-top:8px}
+  .dots span{width:12px;height:12px;border:2px solid var(--line);background:var(--bg)}
+  .dots .ok{background:var(--ok)}.dots .bad{background:var(--bad)}.dots .now{border-color:var(--gold)}
+  /* question */
+  .q{padding:16px 14px;margin:0 4px 12px;font-size:21px;line-height:1.7}
+  .qno{font-size:13px;color:var(--dim);margin-bottom:6px}
+  .opts{display:grid;gap:10px;margin:0 4px}
+  .opt{display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:58px;padding:10px 14px;font-size:20px;color:var(--txt);background:var(--panel);border:3px solid var(--line);border-radius:2px;cursor:pointer;font-family:inherit}
+  .opt .k{flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:var(--panel2);color:var(--gold);font-weight:700;font-size:16px}
+  .opt.sel{border-color:var(--gold);background:#3d3060}
+  .opt.ok{border-color:var(--ok);background:#1f4a32}
+  .opt.bad{border-color:var(--bad);background:#4f2030}
+  .row{display:flex;gap:10px;margin:4px}
+  .row .btn{margin-top:10px}
+  .row .ghost{flex:0 0 34%}
+  .banner{position:fixed;inset:0;background:rgba(10,6,20,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5;font-size:26px;color:var(--gold);text-shadow:3px 3px 0 #000;letter-spacing:3px}
+  .banner small{font-size:15px;color:var(--dim);margin-top:10px;letter-spacing:1px;text-shadow:none}
+  .hidden{display:none!important}
+  .big{font-size:52px;font-weight:900;color:var(--gold);text-shadow:4px 4px 0 #000;margin:10px 0}
+  .wait-mon{margin:20px 0}
+</style>
+</head>
+<body>
+<div id="demoBar" class="demo hidden">示範模式（尚未連接 Firebase，資料只存在這台電腦）</div>
+<div id="app">
+  <!-- 載入 -->
+  <section id="s-load" class="center" style="margin-top:40vh;color:var(--dim)">連線中…</section>
+
+  <!-- 進場 -->
+  <section id="s-join" class="hidden">
+    <h1>數學地下城</h1>
+    <div class="sub">試煉入口・實力檢測</div>
+    <div class="center wait-mon" id="joinMon"></div>
+    <div class="card px">
+      <label for="seat">座號</label>
+      <input id="seat" type="number" inputmode="numeric" min="1" max="60" placeholder="例如 12">
+      <label for="nm">姓名（可以只填姓）</label>
+      <input id="nm" type="text" maxlength="10" placeholder="例如 王">
+      <button class="btn" id="joinBtn">進入地下城</button>
+      <div class="err" id="joinErr"></div>
+    </div>
+  </section>
+
+  <!-- 等待 -->
+  <section id="s-wait" class="hidden center">
+    <h1>準備中</h1>
+    <div class="sub" id="waitWho"></div>
+    <div class="wait-mon" id="waitMon"></div>
+    <div class="card px">
+      <p style="font-size:18px;margin:4px 0">等老師開啟地下城大門…</p>
+      <p style="color:var(--dim);font-size:14px;line-height:1.7">・共 5 間房、15 題，時間 <span id="durTxt"></span> 分鐘<br>・每題<b style="color:var(--gold)">只能作答一次</b>，選好後按「確定出招」<br>・不會的可以「先跳過」，最後會再出現<br>・請準備計算紙</p>
+    </div>
+  </section>
+
+  <!-- 作答 -->
+  <section id="s-play" class="hidden">
+    <div class="hud px"><span>💰 <b id="coin">0</b></span><span id="prog">第 1 / 15 題</span><span>⏳ <span id="timer">--:--</span></span></div>
+    <div class="bar"><div id="barIn" style="width:0"></div></div>
+    <div class="stage px">
+      <div class="roomname" id="roomName"></div>
+      <div class="mon" id="mon"></div>
+      <div class="hp" id="hp"></div>
+      <div class="pop" id="pop"></div>
+    </div>
+    <div class="q px"><div class="qno" id="qno"></div><div id="stem"></div></div>
+    <div class="opts" id="opts"></div>
+    <div class="row">
+      <button class="btn ghost" id="skipBtn">先跳過</button>
+      <button class="btn" id="goBtn" disabled>確定出招</button>
+    </div>
+    <div class="err" id="playErr"></div>
+  </section>
+
+  <!-- 結束 -->
+  <section id="s-end" class="hidden center">
+    <h1 id="endTitle">試煉完成！</h1>
+    <div class="sub" id="endWho"></div>
+    <div class="wait-mon" id="endMon"></div>
+    <div class="card px">
+      <div style="color:var(--dim)">擊中怪物</div>
+      <div class="big" id="endScore">0 / 15</div>
+      <div style="color:var(--dim)">💰 獲得金幣 <b style="color:var(--gold)" id="endCoin">0</b></div>
+      <p style="margin-top:18px;font-size:16px">請放下手機，等待老師檢討 🙌</p>
+    </div>
+  </section>
+</div>
+
+<div id="banner" class="banner hidden"></div>
+
+<script>
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth(), db = firebase.database();
+const base = db.ref('tests/' + TEST_ID);
+const TS = firebase.database.ServerValue.TIMESTAMP;
+const $ = id => document.getElementById(id);
+if (window.DEMO_MODE) $('demoBar').classList.remove('hidden');
+$('durTxt').textContent = DURATION_MIN;
+
+let uid = null, control = { status: 'waiting' }, offset = 0;
+let profile = null, answers = {}, screen = '', queue = [], cur = null, perm = [], picked = -1, busy = false, done = false;
+const now = () => Date.now() + offset;
+const lsKey = () => 'skip_' + TEST_ID + '_' + uid;
+const getSkip = () => { try { return JSON.parse(localStorage.getItem(lsKey())) || []; } catch (e) { return []; } };
+const setSkip = a => { try { localStorage.setItem(lsKey(), JSON.stringify(a)); } catch (e) {} };
+
+$('joinMon').innerHTML = pixelSVG('slime', 9);
+$('waitMon').innerHTML = pixelSVG('bat', 9);
+
+db.ref('.info/serverTimeOffset').on('value', s => offset = s.val() || 0);
+
+auth.onAuthStateChanged(u => {
+  if (!u) { auth.signInAnonymously().catch(e => { $('s-load').textContent = '連線失敗，請重新整理頁面（' + e.code + '）'; }); return; }
+  if (uid) return;
+  uid = u.uid;
+  base.child('students/' + uid + '/profile').on('value', s => {
+    const p = s.val();
+    if (profile && !p) { answers = {}; done = false; setSkip([]); screen = ''; } // 老師重置
+    profile = p; route();
+  });
+  base.child('students/' + uid + '/answers').on('value', s => { answers = s.val() || {}; });
+  base.child('control').on('value', s => { control = s.val() || { status: 'waiting' }; route(); });
+});
+
+function show(id) {
+  ['s-load', 's-join', 's-wait', 's-play', 's-end'].forEach(x => $(x).classList.toggle('hidden', x !== id));
+  screen = id;
+}
+function endAt() { return (control.startAt || 0) + (control.durationMin || DURATION_MIN) * 60000; }
+function timeUp() { return control.status === 'running' && control.startAt && now() >= endAt(); }
+
+function route() {
+  if (!uid) return;
+  if (!profile) { if (screen !== 's-join') show('s-join'); return; }
+  if (done || control.status === 'ended' || timeUp()) { if (screen !== 's-end') finish(); return; }
+  if (control.status !== 'running') {
+    $('waitWho').textContent = profile.seat + ' 號 ' + profile.name;
+    if (screen !== 's-wait') show('s-wait'); return;
+  }
+  if (screen !== 's-play') startPlay();
+}
+
+// ---------- 進場 ----------
+$('joinBtn').onclick = async () => {
+  const seat = parseInt($('seat').value, 10), name = $('nm').value.trim();
+  if (!(seat >= 1 && seat <= 60)) { $('joinErr').textContent = '請輸入正確的座號'; return; }
+  if (!name) { $('joinErr').textContent = '請輸入姓名'; return; }
+  $('joinBtn').disabled = true;
+  try { await base.child('students/' + uid + '/profile').set({ seat, name, at: TS }); }
+  catch (e) { $('joinErr').textContent = '無法進場，請告訴老師（' + (e.code || e.message) + '）'; $('joinBtn').disabled = false; }
+};
+
+// ---------- 作答 ----------
+function hash(str) { let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function shuffled(n, seed) { const a = [...Array(n).keys()]; let s = seed; for (let i = n - 1; i > 0; i--) { s = (Math.imul(s, 1103515245) + 12345) >>> 0; const j = s % (i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function buildQueue() {
+  const skip = getSkip();
+  const left = QUESTIONS.filter(q => !answers[q.id]);
+  queue = [...left.filter(q => !skip.includes(q.id)), ...skip.map(id => left.find(q => q.id === id)).filter(Boolean)];
+}
+function correctCount() { return QUESTIONS.filter(q => answers[q.id] && answers[q.id].c === 0).length; }
+function coins() { return QUESTIONS.reduce((s, q) => s + (answers[q.id] && answers[q.id].c === 0 ? (q.room === 4 ? 20 : 10) : 0), 0); }
+
+async function startPlay() {
+  show('s-play');
+  const s = await base.child('students/' + uid + '/answers').get(); answers = s.val() || {};
+  buildQueue();
+  if (!queue.length) { finish(); return; }
+  nextQ(true);
+}
+
+function nextQ(first) {
+  if (!queue.length) { finish(); return; }
+  const prevRoom = cur ? cur.room : -1;
+  cur = queue[0]; picked = -1; busy = false;
+  const room = ROOMS[cur.room];
+  const render = () => {
+    $('roomName').textContent = '第 ' + (cur.room + 1) + ' 間・' + room.name;
+    $('mon').className = 'mon'; $('mon').innerHTML = pixelSVG(room.monster, cur.room === 4 ? 9 : 10);
+    renderRoomState();
+    const n = Object.keys(answers).length;
+    $('prog').textContent = '已答 ' + n + ' / 15';
+    $('barIn').style.width = (n / 15 * 100) + '%';
+    $('coin').textContent = coins();
+    $('qno').textContent = '第 ' + cur.id.slice(1) + ' 題';
+    $('stem').innerHTML = cur.stem;
+    perm = shuffled(cur.opts.length, hash(uid + cur.id));
+    $('opts').innerHTML = perm.map((oi, di) => `<button class="opt" data-d="${di}"><span class="k">${'ABCD'[di]}</span><span>${cur.opts[oi]}</span></button>`).join('');
+    $('opts').querySelectorAll('.opt').forEach(b => b.onclick = () => pick(+b.dataset.d));
+    $('goBtn').disabled = true; $('skipBtn').disabled = queue.length <= 1; $('playErr').textContent = '';
+    base.child('students/' + uid + '/progress').update({ cur: cur.id, at: TS }).catch(() => {});
+  };
+  if (!first && cur.room !== prevRoom) banner(`第 ${cur.room + 1} 間・${room.name}`, cur.room === 4 ? '⚠️ 魔王出現了！' : '', render);
+  else render();
+}
+
+function renderRoomState() {
+  const inRoom = QUESTIONS.filter(q => q.room === cur.room);
+  const hits = inRoom.filter(q => answers[q.id] && answers[q.id].c === 0).length;
+  $('hp').innerHTML = inRoom.map((q, i) => `<i class="${i < hits ? 'gone' : ''}"></i>`).join('');
+  $('dots') && $('dots').remove();
+}
+
+function pick(d) {
+  if (busy) return;
+  picked = d;
+  $('opts').querySelectorAll('.opt').forEach((b, i) => b.classList.toggle('sel', i === d));
+  $('goBtn').disabled = false;
+}
+
+$('skipBtn').onclick = () => {
+  if (busy || queue.length <= 1) return;
+  const s = getSkip().filter(id => id !== cur.id); s.push(cur.id); setSkip(s);
+  queue.push(queue.shift()); cur = null; nextQ(true);
+};
+
+$('goBtn').onclick = async () => {
+  if (busy || picked < 0) return;
+  if (timeUp()) { finish(); return; }
+  busy = true; $('goBtn').disabled = true; $('skipBtn').disabled = true;
+  const c = perm[picked], ok = c === 0;
+  try {
+    await base.child('students/' + uid + '/answers/' + cur.id).set({ c, t: TS });
+  } catch (e) {
+    if (control.status !== 'running' || timeUp()) { finish(); return; }
+    $('playErr').textContent = '送出失敗，請再按一次（' + (e.code || e.message) + '）';
+    busy = false; $('goBtn').disabled = false; return;
+  }
+  answers[cur.id] = { c };
+  setSkip(getSkip().filter(id => id !== cur.id));
+  const btns = $('opts').querySelectorAll('.opt');
+  btns[picked].classList.remove('sel'); btns[picked].classList.add(ok ? 'ok' : 'bad');
+  $('mon').className = 'mon ' + (ok ? 'hit' : 'miss');
+  const pop = $('pop'); pop.className = 'pop'; void pop.offsetWidth;
+  pop.innerHTML = ok ? `<span style="color:var(--gold)">命中！ +${cur.room === 4 ? 20 : 10} 💰</span>` : '<span style="color:var(--dim)">攻擊落空…</span>';
+  pop.className = 'pop show';
+  renderRoomState(); $('coin').textContent = coins();
+  const n = Object.keys(answers).length;
+  base.child('students/' + uid + '/progress').update({ done: n, at: TS }).catch(() => {});
+  queue.shift();
+  setTimeout(() => nextQ(false), 900);
+};
+
+function banner(title, sub, cb) {
+  const b = $('banner'); b.innerHTML = title + (sub ? `<small>${sub}</small>` : ''); b.classList.remove('hidden');
+  setTimeout(() => { b.classList.add('hidden'); cb && cb(); }, 1100);
+}
+
+function finish() {
+  done = true; show('s-end');
+  const all = Object.keys(answers).length === 15;
+  $('endTitle').textContent = all ? '試煉完成！' : control.status === 'ended' ? '老師已收卷！' : '時間到！';
+  $('endWho').textContent = profile ? profile.seat + ' 號 ' + profile.name : '';
+  $('endMon').innerHTML = pixelSVG('dragon', 7);
+  $('endScore').textContent = correctCount() + ' / 15';
+  $('endCoin').textContent = coins();
+  base.child('students/' + uid + '/progress').update({ finished: true, at: TS }).catch(() => {});
+}
+
+// 計時器
+setInterval(() => {
+  if (screen !== 's-play' || !control.startAt) return;
+  const left = Math.max(0, endAt() - now());
+  const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
+  $('timer').textContent = m + ':' + String(s).padStart(2, '0');
+  $('timer').classList.toggle('warn', left < 180000);
+  if (left <= 0 && !busy) finish();
+}, 250);
+</script>
+</body>
+</html>
