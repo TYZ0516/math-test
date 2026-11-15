@@ -157,11 +157,15 @@ db.ref('.info/serverTimeOffset').on('value', s => offset = s.val() || 0);
 $('loginBtn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => $('loginErr').textContent = '登入失敗：' + e.code);
 $('outBtn').onclick = () => auth.signOut();
 
-auth.onAuthStateChanged(u => {
-  const okUser = u && u.email && u.email.toLowerCase() === TEACHER_EMAIL.toLowerCase();
-  $('loginBox').classList.toggle('hidden', !!okUser);
+auth.onAuthStateChanged(async u => {
+  let okUser = false;
+  if (u && !u.isAnonymous) {
+    // 能讀取全部學生資料＝安全規則認可的老師帳號
+    try { await base.child('students').get(); okUser = true; }
+    catch (e) { $('loginErr').textContent = (u.email || '這個帳號') + ' 沒有後台權限（請確認安全規則裡的 Gmail）'; auth.signOut(); }
+  }
+  $('loginBox').classList.toggle('hidden', okUser);
   $('main').classList.toggle('hidden', !okUser);
-  if (u && !okUser) { $('loginErr').textContent = (u.email || '匿名帳號') + ' 不是設定的老師帳號'; auth.signOut(); }
   if (okUser && !listening) {
     listening = true;
     base.child('control').on('value', s => { control = s.val() || { status: 'waiting' }; renderAll(); });

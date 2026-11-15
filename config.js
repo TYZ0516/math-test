@@ -1,23 +1,22 @@
 // ============================================================
-//  設定檔：只需要改這個檔案
+//  設定檔
 // ============================================================
 
-// ① 把 Firebase「專案設定 → 您的應用程式」裡的 firebaseConfig 整段貼上，取代下面的範例
+// Firebase 連線設定
 const firebaseConfig = {
-  apiKey: "請貼上",
-  authDomain: "請貼上",
-  databaseURL: "請貼上",
-  projectId: "請貼上",
-  storageBucket: "請貼上",
-  messagingSenderId: "請貼上",
-  appId: "請貼上"
+  apiKey: "AIzaSyDU8wrq5Qu2ZumBP4qxefuiel7nx3ljahA",
+  authDomain: "math-after-class.firebaseapp.com",
+  databaseURL: "https://math-after-class-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "math-after-class",
+  storageBucket: "math-after-class.firebasestorage.app",
+  messagingSenderId: "557345425793",
+  appId: "1:557345425793:web:af7bfe629a1d00771a4080"
 };
 
-// ② 老師的 Google 帳號（後台登入用，要和安全規則裡填的一樣）
-const TEACHER_EMAIL = "請填你的gmail@gmail.com";
-
-// ③ 測驗代號：不同次測驗用不同代號，資料就不會混在一起（只能用英文、數字、- ）
+// 測驗代號：不同次測驗用不同代號，資料就不會混在一起（只能用英文、數字、- ）
 const TEST_ID = "pretest-1202";
 
-// ④ 測驗時間（分鐘）
+// 測驗時間（分鐘）
 const DURATION_MIN = 30;
+
+// 老師帳號只寫在 Firebase 的安全規則裡（不放在這裡，避免公開在網路上）

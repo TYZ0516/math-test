@@ -51,7 +51,7 @@
       if (!uid) { uid = 'demo-' + Math.random().toString(36).slice(2, 8); sessionStorage.setItem('mockuid', uid); }
       setUser({ uid, isAnonymous: true });
     },
-    signInWithPopup: async () => setUser({ uid: 'teacher', email: TEACHER_EMAIL, displayName: '老師（示範）' }),
+    signInWithPopup: async () => setUser({ uid: 'teacher', email: 'teacher@demo', isAnonymous: false, displayName: '老師（示範）' }),
     signOut: async () => setUser(null)
   };
 
